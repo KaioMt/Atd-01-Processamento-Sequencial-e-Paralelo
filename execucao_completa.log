@@ -1,0 +1,216 @@
+
+==============================================================================
+ESTUDO DIRIGIDO 01 - COMPUTAÇÃO PARALELA E DISTRIBUÍDA
+==============================================================================
+  python          : 3.11.15
+  implementacao   : CPython
+  sistema         : Linux 6.18.44-fc-v24
+  arquitetura     : x86_64
+  nucleos_logicos : 4
+  data            : 2026-09-08 22:15:27
+
+==============================================================================
+ETAPA 1 - IMPLEMENTAÇÃO SEQUENCIAL (medição de T1)
+==============================================================================
+Tarefas: 100  |  Iterações por tarefa: 300,000
+Execuções: 3
+
+  Execução 1: 2,0499 s
+  Execução 2: 2,0554 s
+  Execução 3: 2,0387 s
+
+  Menor tempo : 2,0387 s
+  Maior tempo : 2,0554 s
+  Média       : 2,0480 s
+  MEDIANA (T1): 2,0499 s   <-- valor usado como T1
+
+  Amostra de resultados: [14399202, 14399433, 14399664] ...
+
+==============================================================================
+ETAPAS 2 e 3 - IMPLEMENTAÇÃO PARALELA E REGISTRO DOS RESULTADOS
+==============================================================================
+Núcleos disponíveis na máquina: 4
+Tarefas: 100  |  T1 (mediana) = 2,0499 s
+
+Processos    | Tempo (s)      | Speedup      | Eficiência   | Overhead (s)   | Tempo ideal   
+---------------------------------------------------------------------------------------------
+1            | 2,0499         | 1,00         | 100,0%       | 0,0000         | 2,0499        
+2            | 1,0462         | 1,96         | 98,0%        | 0,0213         | 1,0250        
+4            | 0,5453         | 3,76         | 94,0%        | 0,0329         | 0,5125        
+8            | 0,5405         | 3,79         | 47,4%        | 0,2842         | 0,2562        
+
+Fórmulas:  Speedup = T1 / Tp        Eficiência = Speedup / N
+           Overhead = Tp - (T1 / N)  (tempo perdido em relação ao ideal)
+
+==============================================================================
+ETAPA 5 - EXPERIMENTO DE GRANULARIDADE
+==============================================================================
+Mesma tarefa, quantidades diferentes de tarefas na lista de entrada.
+
+------------------------------------------------------------------------------
+Experimento A - dados = list(range(1, 21))  (20 tarefas)
+------------------------------------------------------------------------------
+Experimento | Tarefas    | Processos    | Tempo (s)      | Speedup      | Eficiência   | Tarefas/proc.   
+---------------------------------------------------------------------------------------------------------
+A           | 20         | 1            | 0,3978         | 1,00         | 100,0%       | 20              
+A           | 20         | 2            | 0,2108         | 1,89         | 94,4%        | 10,0            
+A           | 20         | 4            | 0,1322         | 3,01         | 75,2%        | 5,0             
+A           | 20         | 8            | 0,1250         | 3,18         | 39,8%        | 2,5             
+
+  Custo médio por tarefa (sequencial): 19,89 ms
+
+------------------------------------------------------------------------------
+Experimento B - dados = list(range(1, 101))  (100 tarefas)
+------------------------------------------------------------------------------
+Experimento | Tarefas    | Processos    | Tempo (s)      | Speedup      | Eficiência   | Tarefas/proc.   
+---------------------------------------------------------------------------------------------------------
+B           | 100        | 1            | 2,0024         | 1,00         | 100,0%       | 100             
+B           | 100        | 2            | 1,0248         | 1,95         | 97,7%        | 50,0            
+B           | 100        | 4            | 0,5282         | 3,79         | 94,8%        | 25,0            
+B           | 100        | 8            | 0,5422         | 3,69         | 46,2%        | 12,5            
+
+  Custo médio por tarefa (sequencial): 20,02 ms
+
+------------------------------------------------------------------------------
+Experimento C - dados = list(range(1, 501))  (500 tarefas)
+------------------------------------------------------------------------------
+Experimento | Tarefas    | Processos    | Tempo (s)      | Speedup      | Eficiência   | Tarefas/proc.   
+---------------------------------------------------------------------------------------------------------
+C           | 500        | 1            | 10,0257        | 1,00         | 100,0%       | 500             
+C           | 500        | 2            | 5,0448         | 1,99         | 99,4%        | 250,0           
+C           | 500        | 4            | 2,5924         | 3,87         | 96,7%        | 125,0           
+C           | 500        | 8            | 2,5695         | 3,90         | 48,8%        | 62,5            
+
+  Custo médio por tarefa (sequencial): 20,05 ms
+
+------------------------------------------------------------------------------
+Experimento D - TRABALHO TOTAL CONSTANTE (30.000.000 iterações), variando o tamanho da tarefa  |  4 processos
+------------------------------------------------------------------------------
+Tarefas    | Iter./tarefa     | Tempo seq.    | Tempo par.    | Speedup    | Eficiência   | Overhead/tarefa   
+--------------------------------------------------------------------------------------------------------------
+100        | 300.001          | 1,8488 s      | 0,5070 s      | 3,65       | 91,2%        | 447.9 us          
+1.000      | 30.001           | 1,8622 s      | 0,6386 s      | 2,92       | 72,9%        | 173.0 us          
+10.000     | 3.001            | 1,8970 s      | 2,3679 s      | 0,80       | 20,0%        | 189.4 us          
+50.000     | 601              | 1,8226 s      | 13,8903 s     | 0,13       | 3,3%         | 268.7 us          
+
+  Todas as linhas realizam exatamente o mesmo cálculo total.
+  A única diferença é em quantos pedaços esse cálculo foi dividido.
+
+==============================================================================
+ETAPA 6 - DESAFIO DE BALANCEAMENTO DE CARGA
+==============================================================================
+Tarefa modificada: múltiplos de 10 usam 1,500,000 iterações (5x mais trabalho)
+                   e as demais entradas, 300,000.
+Tarefas: 100  (10 pesadas, 90 leves)  |  Processos: 4
+Distribuição estática emulada com chunksize = 25 (blocos contíguos); dinâmica com chunksize = 1.
+
+  T1 (sequencial, carga desbalanceada): 2,6756 s
+
+------------------------------------------------------------------------------
+Cenário A - ordem original (1..100)  +  distribuição ESTÁTICA
+------------------------------------------------------------------------------
+  Tempo total (Tp): 0,7393 s   (execuções: 0,7134, 0,7393, 0,7612)
+  Speedup: 3,62   |   Eficiência: 90.5%
+
+    PID       Unidades   Ocupado (s)    Ocioso (s)    Utilização  
+    2869      25         0,7232         0,0161          97.8%
+    2867      25         0,6913         0,0480          93.5%
+    2866      25         0,6155         0,1238          83.3%
+    2868      25         0,6122         0,1271          82.8%
+
+    Processo mais carregado  : 0,7232 s
+    Processo menos carregado : 0,6122 s
+    Desbalanceamento (max-min): 0,1110 s
+    Tempo ocioso somado       : 0,3150 s
+    Utilização média do pool  : 89.3%
+
+------------------------------------------------------------------------------
+Cenário B - ordem original (1..100)  +  distribuição DINÂMICA
+------------------------------------------------------------------------------
+  Tempo total (Tp): 0,7519 s   (execuções: 0,7496, 0,7519, 0,7784)
+  Speedup: 3,56   |   Eficiência: 89.0%
+
+    PID       Unidades   Ocupado (s)    Ocioso (s)    Utilização  
+    2881      22         0,7203         0,0316          95.8%
+    2880      26         0,6626         0,0892          88.1%
+    2879      30         0,6440         0,1079          85.7%
+    2878      22         0,6430         0,1088          85.5%
+
+    Processo mais carregado  : 0,7203 s
+    Processo menos carregado : 0,6430 s
+    Desbalanceamento (max-min): 0,0773 s
+    Tempo ocioso somado       : 0,3375 s
+    Utilização média do pool  : 88.8%
+
+------------------------------------------------------------------------------
+Cenário C - pesadas agrupadas no fim +  distribuição ESTÁTICA
+------------------------------------------------------------------------------
+  Tempo total (Tp): 1,2834 s   (execuções: 1,2333, 1,2834, 1,3011)
+  Speedup: 2,08   |   Eficiência: 52.1%
+
+    PID       Unidades   Ocupado (s)    Ocioso (s)    Utilização  
+    2899      25         1,2648         0,0185          98.6%
+    2898      25         0,4880         0,7954          38.0%
+    2896      25         0,4855         0,7979          37.8%
+    2897      25         0,4822         0,8011          37.6%
+
+    Processo mais carregado  : 1,2648 s
+    Processo menos carregado : 0,4822 s
+    Desbalanceamento (max-min): 0,7826 s
+    Tempo ocioso somado       : 2,4129 s
+    Utilização média do pool  : 53.0%
+
+------------------------------------------------------------------------------
+Cenário D - pesadas agrupadas no fim +  distribuição DINÂMICA
+------------------------------------------------------------------------------
+  Tempo total (Tp): 0,7674 s   (execuções: 0,7462, 0,7674, 0,7724)
+  Speedup: 3,49   |   Eficiência: 87.2%
+
+    PID       Unidades   Ocupado (s)    Ocioso (s)    Utilização  
+    2914      26         0,7450         0,0224          97.1%
+    2916      26         0,7318         0,0356          95.4%
+    2915      24         0,6586         0,1088          85.8%
+    2917      24         0,6506         0,1169          84.8%
+
+    Processo mais carregado  : 0,7450 s
+    Processo menos carregado : 0,6506 s
+    Desbalanceamento (max-min): 0,0944 s
+    Tempo ocioso somado       : 0,2838 s
+    Utilização média do pool  : 90.8%
+
+------------------------------------------------------------------------------
+Cenário E - pesadas agrupadas no fim + SUBTAREFAS (5 fatias por tarefa) + distribuição DINÂMICA
+------------------------------------------------------------------------------
+  Unidades de trabalho enviadas ao pool: 500 (antes eram 100)
+  Tempo total (Tp): 0,7879 s   (execuções: 0,7860, 0,7879, 0,8045)
+  Speedup: 3,40   |   Eficiência: 84.9%
+  Resultados idênticos aos da versão sequencial: SIM
+
+    PID       Unidades   Ocupado (s)    Ocioso (s)    Utilização  
+    2927      123        0,7402         0,0477          93.9%
+    2928      133        0,7306         0,0574          92.7%
+    2926      115        0,7204         0,0675          91.4%
+    2929      129        0,7184         0,0695          91.2%
+
+    Processo mais carregado  : 0,7402 s
+    Processo menos carregado : 0,7184 s
+    Desbalanceamento (max-min): 0,0218 s
+    Tempo ocioso somado       : 0,2421 s
+    Utilização média do pool  : 92.3%
+
+------------------------------------------------------------------------------
+Comparativo das estratégias de distribuição (T1 = 2,6756 s, 4 processos)
+------------------------------------------------------------------------------
+Cenário                                              | Tempo (s)   | Speedup   | Eficiência   | Desbalanc. (s)     | Ocioso (s)  
+---------------------------------------------------------------------------------------------------------------------------------
+A. ordem original (1..100)  +  distribuição ESTÁTICA | 0,7393      | 3,62      | 90,5%        | 0,1110             | 0,3150      
+B. ordem original (1..100)  +  distribuição DINÂMICA | 0,7519      | 3,56      | 89,0%        | 0,0773             | 0,3375      
+C. pesadas agrupadas no fim +  distribuição ESTÁTICA | 1,2834      | 2,08      | 52,1%        | 0,7826             | 2,4129      
+D. pesadas agrupadas no fim +  distribuição DINÂMICA | 0,7674      | 3,49      | 87,2%        | 0,0944             | 0,2838      
+E. pesadas agrupadas + 5 subtarefas + DINÂMICA       | 0,7879      | 3,40      | 84,9%        | 0,0218             | 0,2421      
+
+Resultados gravados em:
+  ./resultados_ed01.csv
+  ./resultados_ed01.json
+
+Execução concluída.
